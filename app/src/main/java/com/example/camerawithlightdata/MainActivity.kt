@@ -367,14 +367,14 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     }
 
     private fun saveLightDataToFile() {
-        var csv: CSVHelper = CSVHelper()
+        var csv = CSVHelper()
 
         var filename = "${System.currentTimeMillis()}.csv"
-        val dir = getExternalFilesDir(null)
-
-        if (dir != null) {
-            filename = "${dir.absolutePath}/$filename"
-        }
+        val mediaStorageDir = File(
+            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES),
+            "MyCameraApp"
+        )
+        filename = "${mediaStorageDir.path}/$filename"
 
         csv.appendStringToCSV(lightArray.joinToString(","), filename)
         lightArray.clear()
