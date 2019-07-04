@@ -2,7 +2,7 @@ package com.example.camerawithlightdata
 
 import android.content.Context
 import android.graphics.Rect
-import android.hardware.Camera
+import android.hardware.*
 import android.media.CamcorderProfile
 import android.media.MediaRecorder
 import android.net.Uri
@@ -15,13 +15,15 @@ import android.view.SurfaceHolder
 import android.view.SurfaceView
 import android.widget.Button
 import android.widget.FrameLayout
+import android.widget.TextView
+import kotlinx.android.synthetic.main.activity_main.view.*
 import java.io.File
 import java.io.IOException
 import java.nio.file.Files.exists
 import java.text.SimpleDateFormat
 import java.util.*
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : AppCompatActivity(), SensorEventListener {
     val TAG = "aaagh"
 
     private var mCamera: Camera? = null
@@ -52,8 +54,8 @@ class MainActivity : AppCompatActivity() {
             if (isRecording) {
                 try {
                     // stop recording and release camera
-                    mediaRecorder?.stop() // stop the recording
-//                    mCameraHandler.sendEmptyMessage(STOP)
+//                    mediaRecorder?.stop() // stop the recording
+                    mCameraHandler.sendEmptyMessage(STOP)
                 } catch (e: Exception) {
                     Log.d(TAG, "stopRecording: ${e.message}")
                 }
@@ -88,6 +90,12 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        lightTextView = findViewById(R.id.lightTextView)
+        initializeCameraHandler()
+        initializeLightSensor()
+    }
+
+    private fun initializeCameraHandler() {
         val handlerThread: HandlerThread = HandlerThread("Camera Handler Thread")
         handlerThread.start()
         mCameraHandler = CameraHandler(handlerThread.looper)
@@ -159,10 +167,10 @@ class MainActivity : AppCompatActivity() {
             // start preview with new settings
             mCamera.apply {
                 try {
-                    val profile: CamcorderProfile = CamcorderProfile.get(CamcorderProfile.QUALITY_HIGH);
-                    val parameters: Camera.Parameters? = mCamera?.parameters
-                    parameters?.setPreviewSize(profile.videoFrameWidth, profile.videoFrameHeight)
-                    mCamera?.parameters = parameters
+//                    val profile: CamcorderProfile = CamcorderProfile.get(CamcorderProfile.QUALITY_HIGH);
+//                    val parameters: Camera.Parameters? = mCamera?.parameters
+//                    parameters?.setPreviewSize(profile.videoFrameWidth, profile.videoFrameHeight)
+//                    mCamera?.parameters = parameters
                     setPreviewDisplay(mHolder)
                     startPreview()
                 } catch (e: Exception) {
@@ -191,7 +199,7 @@ class MainActivity : AppCompatActivity() {
 
                 // Step 3: Set a CamcorderProfile (requires API Level 8 or higher)
                 setProfile(profile)
-                setAudioSamplingRate(16000);
+//                setAudioSamplingRate(16000);
 
                 // Step 4: Set output file
                 setOutputFile(getOutputMediaFile(MEDIA_TYPE_VIDEO).toString())
@@ -220,10 +228,17 @@ class MainActivity : AppCompatActivity() {
 
     var mediaRecorder: MediaRecorder? = null
 
+    override fun onResume() {
+        super.onResume()
+        sensorManager.registerListener(this, light, SensorManager.SENSOR_DELAY_NORMAL)
+    }
+
     override fun onPause() {
         super.onPause()
         releaseMediaRecorder() // if you are using MediaRecorder, release it first
         releaseCamera() // release the camera immediately on pause event
+
+        sensorManager.unregisterListener(this)
     }
 
     private fun releaseMediaRecorder() {
@@ -304,17 +319,65 @@ class MainActivity : AppCompatActivity() {
             super.handleMessage(msg)
             try {
                 when (msg?.what) {
-                    START -> mediaRecorder?.start()
+                    START -> {
+                        startTime = System.currentTimeMillis()
+                        mediaRecorder?.start()
+                    }
                     STOP -> {
-//                        mediaRecorder?.setOnErrorListener(null)
-//                        mediaRecorder?.setOnInfoListener(null)
-//                        mediaRecorder?.setPreviewDisplay(null)
+                        startTime = 0
                         mediaRecorder?.stop()
+                        saveLightDataToFile()
                     }
                 }
             } catch (e: Exception) {
-
+                Log.d(TAG, e.message)
             }
         }
     }
+
+    /** light sensor */
+
+    private lateinit var sensorManager: SensorManager
+    private var light: Sensor? = null
+    private var lightArray: ArrayList<Long> = ArrayList()
+    private var startTime: Long = 0;
+
+    private lateinit var lightTextView: TextView
+
+    override fun onAccuracyChanged(event: Sensor?, p1: Int) {
+        // do nothing
+    }
+
+    override fun onSensorChanged(event: SensorEvent?) {
+        Log.d(TAG, "startTime: ${startTime}")
+        if (startTime == 0L) return
+
+        val intensity = event?.values?.get(0)?.toLong()
+        lightTextView.text = intensity?.toString()
+        val timestamp = System.currentTimeMillis() - startTime
+        intensity?.let {
+            lightArray.add(timestamp)
+            lightArray.add(it)
+        }
+    }
+
+    private fun initializeLightSensor() {
+        sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
+        light = sensorManager.getDefaultSensor(Sensor.TYPE_LIGHT)
+    }
+
+    private fun saveLightDataToFile() {
+        var csv: CSVHelper = CSVHelper()
+
+        var filename = "${System.currentTimeMillis()}.csv"
+        val dir = getExternalFilesDir(null)
+
+        if (dir != null) {
+            filename = "${dir.absolutePath}/$filename"
+        }
+
+        csv.appendStringToCSV(lightArray.joinToString(","), filename)
+        lightArray.clear()
+    }
+
 }
