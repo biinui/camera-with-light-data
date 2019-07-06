@@ -22,6 +22,9 @@ import java.io.IOException
 import java.nio.file.Files.exists
 import java.text.SimpleDateFormat
 import java.util.*
+import android.util.DisplayMetrics
+
+
 
 class MainActivity : AppCompatActivity(), SensorEventListener {
     val TAG = "aaagh"
@@ -36,6 +39,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 
         // Create an instance of Camera
         mCamera = getCameraInstance()
+        mCamera?.setDisplayOrientation(90)
 
         mPreview = mCamera?.let {
             // Create our Preview view
@@ -46,6 +50,9 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         mPreview?.also {
             val preview: FrameLayout = findViewById(R.id.camera_preview)
             preview.addView(it)
+            preview.post(
+                Runnable { run { Log.d(TAG, "{${preview.height}, ${preview.width}" ) } }
+            )
         }
 
         var isRecording = false
@@ -93,6 +100,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         lightTextView = findViewById(R.id.lightTextView)
         initializeCameraHandler()
         initializeLightSensor()
+
     }
 
     private fun initializeCameraHandler() {
@@ -104,7 +112,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     /** A safe way to get an instance of the Camera object. */
     fun getCameraInstance(): Camera? {
         return try {
-            Camera.open(0) // attempt to get a Camera instance
+            Camera.open(1) // attempt to get a Camera instance
         } catch (e: Exception) {
             // Camera is not available (in use or does not exist)
             Log.d(TAG, "getCameraInstance: ${e.message}")
@@ -182,6 +190,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 
     private fun prepareVideoRecorder(): Boolean {
         mediaRecorder = MediaRecorder()
+        mediaRecorder?.setOrientationHint(270)
 
         mCamera?.let { camera ->
 
