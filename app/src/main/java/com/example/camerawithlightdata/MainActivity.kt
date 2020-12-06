@@ -101,6 +101,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         initializeCameraHandler()
         initializeLightSensor()
 
+        getExternalFilesDirs("/")
     }
 
     private fun initializeCameraHandler() {
@@ -273,9 +274,9 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
     private fun getOutputMediaFile(type: Int): File? {
         // To be safe, you should check that the SDCard is mounted
         // using Environment.getExternalStorageState() before doing this.
-
+        var fileDirs = externalMediaDirs
         val mediaStorageDir = File(
-            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES),
+            fileDirs[1],
             "MyCameraApp"
         )
         // This location works best if you want the created images to be shared
@@ -362,7 +363,7 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
         if (startTime == 0L) return
 
         val intensity = event?.values?.get(0)?.toLong()
-        lightTextView.text = intensity?.toString()
+//        lightTextView.text = intensity?.toString()
         val timestamp = System.currentTimeMillis() - startTime
         intensity?.let {
             lightArray.add(timestamp)
@@ -377,10 +378,10 @@ class MainActivity : AppCompatActivity(), SensorEventListener {
 
     private fun saveLightDataToFile() {
         var csv = CSVHelper()
-
+        val fileDirs = externalMediaDirs
         var filename = "${System.currentTimeMillis()}.csv"
         val mediaStorageDir = File(
-            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES),
+            fileDirs[1],
             "MyCameraApp"
         )
         filename = "${mediaStorageDir.path}/$filename"
